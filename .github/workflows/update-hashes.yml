@@ -1,0 +1,32 @@
+name: Update Hashes
+
+# Run on a schedule
+on:
+  schedule:
+    - cron:  '10 * * * *'
+  
+  workflow_dispatch:
+  
+jobs:
+  check_for_updates:
+    runs-on: self-hosted
+    
+    steps:
+      - name: checkout repo
+        run: |
+          REPO=$(basename $GITHUB_REPOSITORY)
+          BRANCH=$(echo $GITHUB_REF | sed s,refs/heads/,,)
+          TOPDIR=$(pwd)
+          if [ ! -e $REPO-$BRANCH-hashcheck ] ; then
+            git clone $GITHUB_SERVER_URL/$GITHUB_REPOSITORY $REPO-$BRANCH-hashcheck
+          fi
+          pushd $REPO-$BRANCH-hashcheck
+            git reset --hard
+            git checkout $BRANCH
+            git pull
+            bash setup.sh
+            git add layers/* || true
+            git add sources/* || true
+            git commit -m "Update hashes values $(date +%y%m%d%H%M)" || true
+            git push
+          popd
